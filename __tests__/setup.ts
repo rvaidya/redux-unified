@@ -2,6 +2,9 @@
  * Test setup and mocks for redux-unified
  */
 
+// Setup React Testing Library
+import '@testing-library/jest-dom';
+
 // Mock fetch globally
 global.fetch = jest.fn();
 

@@ -15,6 +15,7 @@
     "dev": "tsc --watch",
     "test": "npm run test:core",
     "test:core": "jest --config __tests__/jest.config.js __tests__/diagnosis.test.ts __tests__/integration-final.test.ts __tests__/memory-cache.test.ts __tests__/httpMiddleware.test.ts __tests__/websocket-message-format.test.ts __tests__/endpoint-types.test.ts __tests__/unit.test.ts",
+    "test:react": "jest --config __tests__/jest.config.js __tests__/react-simple.test.tsx --no-cache",
     "test:all": "jest --config __tests__/jest.config.js",
     "test:watch": "jest --config __tests__/jest.config.js --watch",
     "test:coverage": "npm run test:core -- --coverage",
@@ -89,9 +90,14 @@
     }
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^14.6.1",
     "@types/express": "^4.17.22",
     "@types/jest": "^29.0.0",
     "@types/node": "^20.0.0",
+    "@types/react": "^19.1.6",
+    "@types/react-dom": "^19.1.6",
     "@types/ws": "^8.18.1",
     "@typescript-eslint/eslint-plugin": "^6.0.0",
     "@typescript-eslint/parser": "^6.0.0",
@@ -99,6 +105,9 @@
     "express": "^4.21.2",
     "jest": "^29.0.0",
     "jest-environment-jsdom": "^29.0.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "react-redux": "^9.2.0",
     "ts-jest": "^29.0.0",
     "typescript": "^5.0.0",
     "ws": "^8.18.2"
