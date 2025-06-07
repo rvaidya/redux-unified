@@ -9,10 +9,23 @@ import userEvent from '@testing-library/user-event';
 import { configureStore } from '@reduxjs/toolkit';
 import { Provider, useSelector, useDispatch } from 'react-redux';
 import { createSlice, EndpointType } from '../index';
+import { getUnifiedMiddleware } from '../middleware';
 
 // Mock fetch for HTTP requests
 const mockFetch = jest.fn();
 global.fetch = mockFetch;
+
+// Define types for our state
+interface CounterState {
+  value: number;
+  loading: boolean;
+  error: string | null;
+  data: any;
+}
+
+interface RootState {
+  counter: CounterState;
+}
 
 // Create a simple slice for testing
 const counterSlice = createSlice({
@@ -22,7 +35,7 @@ const counterSlice = createSlice({
     loading: false,
     error: null as string | null,
     data: null as any
-  },
+  } as CounterState,
   
   reducers: {
     increment: (state) => {
@@ -70,13 +83,18 @@ function createTestStore() {
   return configureStore({
     reducer: {
       counter: counterSlice.reducer
-    }
+    },
+    middleware: (getDefaultMiddleware) => 
+      getDefaultMiddleware().concat(getUnifiedMiddleware())
   });
 }
 
+// Type the store
+type TestStore = ReturnType<typeof createTestStore>;
+
 // Simple Counter Component
 const Counter: React.FC = () => {
-  const counter = useSelector((state: any) => state.counter);
+  const counter = useSelector((state: RootState) => state.counter);
   const dispatch = useDispatch();
 
   return (
@@ -140,6 +158,11 @@ function renderWithStore(component: React.ReactElement) {
   };
 }
 
+// Helper function to get typed state
+function getTypedState(store: ReturnType<typeof createTestStore>): RootState {
+  return store.getState() as RootState;
+}
+
 describe('Redux Unified React Integration Tests', () => {
   beforeEach(() => {
     mockFetch.mockClear();
@@ -162,7 +185,7 @@ describe('Redux Unified React Integration Tests', () => {
       expect(screen.getByText('Counter: 1')).toBeInTheDocument();
 
       // Check Redux state
-      expect(store.getState().counter.value).toBe(1);
+      expect(getTypedState(store).counter.value).toBe(1);
     });
 
     test('should decrement counter when decrement button is clicked', async () => {
@@ -179,7 +202,7 @@ describe('Redux Unified React Integration Tests', () => {
       expect(screen.getByText('Counter: 0')).toBeInTheDocument();
 
       // Check Redux state
-      expect(store.getState().counter.value).toBe(0);
+      expect(getTypedState(store).counter.value).toBe(0);
     });
 
     test('should reset counter when reset button is clicked', async () => {
@@ -199,7 +222,7 @@ describe('Redux Unified React Integration Tests', () => {
       expect(screen.getByText('Counter: 0')).toBeInTheDocument();
 
       // Check Redux state
-      expect(store.getState().counter.value).toBe(0);
+      expect(getTypedState(store).counter.value).toBe(0);
     });
   });
 
@@ -234,7 +257,7 @@ describe('Redux Unified React Integration Tests', () => {
       );
 
       // Check Redux state
-      const state = store.getState();
+      const state = getTypedState(store);
       expect(state.counter.loading).toBe(false);
       expect(state.counter.data).toEqual({
         message: 'Hello from API',
@@ -265,7 +288,7 @@ describe('Redux Unified React Integration Tests', () => {
       expect(screen.getByTestId('error-message')).toHaveTextContent('Error: Failed to fetch data');
 
       // Check Redux state
-      const state = store.getState();
+      const state = getTypedState(store);
       expect(state.counter.loading).toBe(false);
       expect(state.counter.error).toBe('Failed to fetch data');
     });
@@ -300,7 +323,7 @@ describe('Redux Unified React Integration Tests', () => {
       expect(screen.getByTestId('data-display')).toBeInTheDocument(); // Data should still be there
 
       // Verify final state
-      const finalState = store.getState();
+      const finalState = getTypedState(store);
       expect(finalState.counter.value).toBe(0);
       expect(finalState.counter.data).toEqual({ count: 42 });
       expect(finalState.counter.error).toBeNull();
