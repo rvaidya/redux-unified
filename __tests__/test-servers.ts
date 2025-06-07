@@ -4,8 +4,7 @@
  */
 
 import * as http from 'http';
-import { WebSocketServer } from 'ws';
-import WebSocket from 'ws';
+import * as WebSocket from 'ws';
 import express, { Request, Response, NextFunction } from 'express';
 
 interface TestServers {
@@ -139,7 +138,7 @@ export class TestServerManager implements TestServers {
         path: '/ws'
       });
 
-      this.wsServer.on('connection', (ws, req) => {
+      this.wsServer.on('connection', (ws: WebSocket, req: any) => {
         console.log('WebSocket client connected');
 
         // Send welcome message
@@ -150,7 +149,7 @@ export class TestServerManager implements TestServers {
         }));
 
         // Echo back any received messages
-        ws.on('message', (data) => {
+        ws.on('message', (data: any) => {
           try {
             const message = JSON.parse(data.toString());
             
@@ -177,7 +176,7 @@ export class TestServerManager implements TestServers {
           console.log('WebSocket client disconnected');
         });
 
-        ws.on('error', (error) => {
+        ws.on('error', (error: any) => {
           console.error('WebSocket error:', error);
         });
       });
