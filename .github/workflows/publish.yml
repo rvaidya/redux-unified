@@ -1,0 +1,139 @@
+name: Publish to NPM
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to publish (leave empty for package.json version)'
+        required: false
+        type: string
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Use Node.js 20.x
+      uses: actions/setup-node@v4
+      with:
+        node-version: 20.x
+        cache: 'npm'
+        registry-url: 'https://registry.npmjs.org'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Run security audit
+      run: npm audit --audit-level moderate
+      continue-on-error: true
+      
+    - name: Run all tests
+      run: |
+        npm run lint
+        npm run build
+        npm test
+        npm run test:coverage
+        
+    - name: Update version if specified
+      if: github.event.inputs.version != ''
+      run: npm version ${{ github.event.inputs.version }} --no-git-tag-version
+      
+    - name: Build package
+      run: npm run build
+      
+    - name: Publish to NPM
+      run: npm publish --access public
+      env:
+        NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        
+    - name: Create GitHub release
+      if: github.event.inputs.version != ''
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: v${{ github.event.inputs.version }}
+        release_name: Release v${{ github.event.inputs.version }}
+        body: |
+          Auto-generated release for version ${{ github.event.inputs.version }}
+          
+          ## Changes
+          See [CHANGELOG.md](CHANGELOG.md) for detailed changes.
+          
+          ## Installation
+          ```bash
+          npm install redux-unified@${{ github.event.inputs.version }}
+          ```
+        draft: false
+        prerelease: false
+
+  publish-beta:
+    runs-on: ubuntu-latest
+    if: contains(github.ref, 'beta') || contains(github.ref, 'alpha') || contains(github.ref, 'rc')
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Use Node.js 20.x
+      uses: actions/setup-node@v4
+      with:
+        node-version: 20.x
+        cache: 'npm'
+        registry-url: 'https://registry.npmjs.org'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Run tests
+      run: |
+        npm run lint
+        npm run build
+        npm test
+        
+    - name: Build package
+      run: npm run build
+      
+    - name: Publish beta to NPM
+      run: npm publish --tag beta --access public
+      env:
+        NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  dry-run:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Use Node.js 20.x
+      uses: actions/setup-node@v4
+      with:
+        node-version: 20.x
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Build package
+      run: npm run build
+      
+    - name: Dry run publish
+      run: npm publish --dry-run --access public
+      
+    - name: Check package contents
+      run: |
+        npm pack
+        tar -tzf redux-unified-*.tgz
+        
+    - name: Upload package preview
+      uses: actions/upload-artifact@v4
+      with:
+        name: package-preview
+        path: redux-unified-*.tgz 

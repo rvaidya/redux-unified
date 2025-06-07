@@ -1,0 +1,214 @@
+name: Release
+
+on:
+  push:
+    branches: [ main ]
+    paths-ignore:
+      - 'README.md'
+      - 'docs/**'
+      - '__tests__/**'
+  workflow_dispatch:
+    inputs:
+      release_type:
+        description: 'Release type'
+        required: true
+        default: 'patch'
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+          - prerelease
+      prerelease_tag:
+        description: 'Prerelease tag (alpha, beta, rc)'
+        required: false
+        type: string
+        default: 'beta'
+
+jobs:
+  check-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      should_release: ${{ steps.check.outputs.should_release }}
+      version_bump: ${{ steps.check.outputs.version_bump }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        
+    - name: Check for release-worthy changes
+      id: check
+      run: |
+        # Check if this is a manual dispatch
+        if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          echo "should_release=true" >> $GITHUB_OUTPUT
+          echo "version_bump=${{ github.event.inputs.release_type }}" >> $GITHUB_OUTPUT
+          exit 0
+        fi
+        
+        # Check commit messages for conventional commits
+        recent_commits=$(git log --oneline -10 --pretty=format:"%s")
+        
+        should_release=false
+        version_bump="patch"
+        
+        if echo "$recent_commits" | grep -qE "^(feat|fix|perf|refactor)(\(.+\))?: "; then
+          should_release=true
+        fi
+        
+        if echo "$recent_commits" | grep -qE "^feat(\(.+\))?: "; then
+          version_bump="minor"
+        fi
+        
+        if echo "$recent_commits" | grep -qE "BREAKING CHANGE"; then
+          version_bump="major"
+        fi
+        
+        echo "should_release=$should_release" >> $GITHUB_OUTPUT
+        echo "version_bump=$version_bump" >> $GITHUB_OUTPUT
+        
+        echo "Recent commits:"
+        echo "$recent_commits"
+        echo "Should release: $should_release"
+        echo "Version bump: $version_bump"
+
+  release:
+    needs: check-changes
+    if: needs.check-changes.outputs.should_release == 'true'
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        fetch-depth: 0
+        
+    - name: Use Node.js 20.x
+      uses: actions/setup-node@v4
+      with:
+        node-version: 20.x
+        cache: 'npm'
+        registry-url: 'https://registry.npmjs.org'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Run full test suite
+      run: |
+        npm run lint
+        npm run build
+        npm test
+        npm run test:coverage
+        
+    - name: Setup Git
+      run: |
+        git config --global user.name 'Release Bot'
+        git config --global user.email 'release-bot@github.com'
+        
+    - name: Determine version bump
+      id: version
+      run: |
+        if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          BUMP_TYPE="${{ github.event.inputs.release_type }}"
+          if [ "$BUMP_TYPE" = "prerelease" ]; then
+            PRERELEASE_TAG="${{ github.event.inputs.prerelease_tag }}"
+            NEW_VERSION=$(npm version prerelease --preid=$PRERELEASE_TAG --no-git-tag-version)
+          else
+            NEW_VERSION=$(npm version $BUMP_TYPE --no-git-tag-version)
+          fi
+        else
+          BUMP_TYPE="${{ needs.check-changes.outputs.version_bump }}"
+          NEW_VERSION=$(npm version $BUMP_TYPE --no-git-tag-version)
+        fi
+        
+        echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+        echo "bump_type=$BUMP_TYPE" >> $GITHUB_OUTPUT
+        echo "New version will be: $NEW_VERSION"
+        
+    - name: Build package
+      run: npm run build
+      
+    - name: Generate changelog
+      id: changelog
+      run: |
+        # Simple changelog generation
+        echo "## Changes in ${{ steps.version.outputs.new_version }}" > RELEASE_NOTES.md
+        echo "" >> RELEASE_NOTES.md
+        
+        # Get commits since last tag
+        if git describe --tags --abbrev=0 2>/dev/null; then
+          LAST_TAG=$(git describe --tags --abbrev=0)
+          echo "### Commits since $LAST_TAG:" >> RELEASE_NOTES.md
+        else
+          echo "### Recent commits:" >> RELEASE_NOTES.md
+        fi
+        
+        echo "" >> RELEASE_NOTES.md
+        git log --oneline --pretty=format:"- %s (%h)" -10 >> RELEASE_NOTES.md
+        
+        echo "" >> RELEASE_NOTES.md
+        echo "### Installation" >> RELEASE_NOTES.md
+        echo "\`\`\`bash" >> RELEASE_NOTES.md
+        echo "npm install redux-unified@${{ steps.version.outputs.new_version }}" >> RELEASE_NOTES.md
+        echo "\`\`\`" >> RELEASE_NOTES.md
+        
+        # Read the generated content
+        CHANGELOG_CONTENT=$(cat RELEASE_NOTES.md)
+        echo "changelog_content<<EOF" >> $GITHUB_OUTPUT
+        echo "$CHANGELOG_CONTENT" >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
+        
+    - name: Commit version bump
+      run: |
+        git add package.json
+        git commit -m "chore: bump version to ${{ steps.version.outputs.new_version }}"
+        git tag "${{ steps.version.outputs.new_version }}"
+        git push origin main
+        git push origin "${{ steps.version.outputs.new_version }}"
+        
+    - name: Create GitHub Release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ steps.version.outputs.new_version }}
+        release_name: Release ${{ steps.version.outputs.new_version }}
+        body: ${{ steps.changelog.outputs.changelog_content }}
+        draft: false
+        prerelease: ${{ contains(steps.version.outputs.new_version, 'alpha') || contains(steps.version.outputs.new_version, 'beta') || contains(steps.version.outputs.new_version, 'rc') }}
+        
+    - name: Publish to NPM
+      run: |
+        if [[ "${{ steps.version.outputs.new_version }}" == *"alpha"* ]] || [[ "${{ steps.version.outputs.new_version }}" == *"beta"* ]] || [[ "${{ steps.version.outputs.new_version }}" == *"rc"* ]]; then
+          npm publish --tag next --access public
+        else
+          npm publish --access public
+        fi
+      env:
+        NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        
+    - name: Upload release artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: release-${{ steps.version.outputs.new_version }}
+        path: |
+          dist/
+          package.json
+          README.md
+          RELEASE_NOTES.md
+
+  notify:
+    needs: release
+    if: always() && needs.release.result == 'success'
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Notify success
+      run: |
+        echo "🎉 Successfully released redux-unified!"
+        echo "📦 Package published to NPM"
+        echo "🏷️ GitHub release created"
+        echo "✅ All workflows completed successfully" 

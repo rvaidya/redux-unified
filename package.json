@@ -1,0 +1,154 @@
+{
+  "name": "redux-unified",
+  "version": "1.0.0",
+  "description": "A comprehensive Redux extension that unifies HTTP API calls, WebSocket connections, and regular actions into a single, cohesive development experience with built-in caching, authentication, and LRU memory management.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "module": "dist/index.js",
+  "sideEffects": false,
+  "engines": {
+    "node": ">=16.0.0",
+    "npm": ">=8.0.0"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "jest --config __tests__/jest.config.js",
+    "test:watch": "jest --config __tests__/jest.config.js --watch",
+    "test:coverage": "jest --config __tests__/jest.config.js --coverage",
+    "test:integration": "jest --config __tests__/jest.config.js --testPathPattern=integration",
+    "test:unit": "jest --config __tests__/jest.config.js --testPathPattern=unit",
+    "test:env": "jest --config __tests__/jest.config.js --testPathPattern=diagnosis",
+    "test:diagnosis": "jest --config __tests__/jest.config.js __tests__/diagnosis.test.ts",
+    "test:websocket": "jest --config __tests__/jest.config.js __tests__/websocket-message-format.test.ts",
+    "test:auth": "jest --config __tests__/jest.config.js __tests__/auth-integration.test.ts",
+    "test:cache": "jest --config __tests__/jest.config.js __tests__/memory-cache.test.ts __tests__/lru-cache.test.ts",
+    "coverage:badges": "node scripts/generate-coverage-badge.js",
+    "coverage:report": "npm run test:coverage && npm run coverage:badges",
+    "benchmark": "node __tests__/benchmark.js",
+    "lint": "eslint *.ts **/*.ts --ignore-pattern node_modules --ignore-pattern dist",
+    "lint:fix": "eslint *.ts **/*.ts --ignore-pattern node_modules --ignore-pattern dist --fix",
+    "clean": "rm -rf dist coverage",
+    "prepublishOnly": "npm run clean && npm run build && npm test",
+    "postbuild": "cp package.json dist/ && cp README.md dist/ && cp -r examples dist/examples || true",
+    "release": "npm run build && npm publish",
+    "release:beta": "npm run build && npm publish --tag beta",
+    "example:basic": "node examples/basic-usage-example.js",
+    "example:websocket": "node examples/websocket-server-client-example.js",
+    "example:cache": "node examples/lru-cache-example.js"
+  },
+  "keywords": [
+    "redux",
+    "redux-toolkit",
+    "http",
+    "websocket",
+    "api",
+    "middleware",
+    "typescript",
+    "react",
+    "caching",
+    "lru-cache",
+    "authentication",
+    "real-time",
+    "state-management",
+    "async",
+    "promise",
+    "axios-alternative",
+    "fetch",
+    "socket.io",
+    "rtk-query-alternative"
+  ],
+  "author": {
+    "name": "rvaidya",
+    "email": "rahul@rvaidya.com",
+    "url": "https://github.com/rvaidya"
+  },
+  "contributors": [
+    {
+      "name": "Redux Unified Team",
+      "url": "https://github.com/rvaidya/redux-unified/graphs/contributors"
+    }
+  ],
+  "license": "MIT",
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/rvaidya"
+  },
+  "peerDependencies": {
+    "@reduxjs/toolkit": "^1.9.0 || ^2.0.0",
+    "redux": "^4.2.0 || ^5.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@reduxjs/toolkit": {
+      "optional": false
+    },
+    "redux": {
+      "optional": false
+    }
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.22",
+    "@types/jest": "^29.0.0",
+    "@types/node": "^20.0.0",
+    "@types/ws": "^8.18.1",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "eslint": "^8.0.0",
+    "express": "^4.21.2",
+    "jest": "^29.0.0",
+    "jest-environment-jsdom": "^29.0.0",
+    "ts-jest": "^29.0.0",
+    "typescript": "^5.0.0",
+    "ws": "^8.18.2"
+  },
+  "files": [
+    "dist/**/*",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md",
+    "examples/**/*"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rvaidya/redux-unified.git",
+    "directory": "."
+  },
+  "bugs": {
+    "url": "https://github.com/rvaidya/redux-unified/issues",
+    "email": "reduxunified@rvaidya.com"
+  },
+  "homepage": "https://github.com/rvaidya/redux-unified#readme",
+  "documentation": "https://github.com/rvaidya/redux-unified/blob/main/README.md",
+  "changelog": "https://github.com/rvaidya/redux-unified/blob/main/CHANGELOG.md",
+  "badges": {
+    "build": "https://github.com/rvaidya/redux-unified/workflows/CI/badge.svg",
+    "coverage": "https://codecov.io/gh/rvaidya/redux-unified/branch/main/graph/badge.svg",
+    "npm": "https://img.shields.io/npm/v/redux-unified.svg",
+    "downloads": "https://img.shields.io/npm/dm/redux-unified.svg",
+    "license": "https://img.shields.io/npm/l/redux-unified.svg"
+  },
+  "browserslist": [
+    "> 1%",
+    "last 2 versions",
+    "not dead",
+    "not ie 11"
+  ],
+  "jest": {
+    "preset": "ts-jest",
+    "testEnvironment": "jsdom"
+  },
+  "eslintConfig": {
+    "extends": [
+      "@typescript-eslint/recommended"
+    ]
+  },
+  "config": {
+    "commitizen": {
+      "path": "cz-conventional-changelog"
+    }
+  }
+}
