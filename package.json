@@ -13,7 +13,7 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
-    "test": "npm run test:core",
+    "test": "npm run test:core && npm run test:react",
     "test:core": "jest --config __tests__/jest.config.js __tests__/diagnosis.test.ts __tests__/integration-final.test.ts __tests__/memory-cache.test.ts __tests__/httpMiddleware.test.ts __tests__/websocket-message-format.test.ts __tests__/endpoint-types.test.ts __tests__/unit.test.ts",
     "test:react": "jest --config __tests__/jest.config.js __tests__/react-simple.test.tsx --no-cache",
     "test:all": "jest --config __tests__/jest.config.js",
